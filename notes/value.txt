@@ -1,0 +1,36 @@
+
+
+CRITICAL 
+- SWAP in PUMP CURVE PROGRAM
+- SWAP in RAYDIUM POOL PROGRAM
+
+OPTIONS
+0- Snipe (dev dump risk)
+    - Buy if dev didnt buy
+
+1- Blind Snipe
+    - buy anything
+    - sell on tracking
+        - profit
+        - holders
+        - MC
+    --- tech ---
+    ✅ 0 - geyser wallet
+        - catches buy swap
+            - geyser for token $$ & MC = track reserves of pump curve (token)
+            - triggers sell swap
+    ✅ 1 - geyser catch token
+         - buy swap 
+
+2- Copy trade
+    - buy
+        - track wallet
+    - sell right away
+
+
+3- Buy on About to graduate
+    - MC
+    - buy before 81k
+    - sell on profit tracking
+
+
