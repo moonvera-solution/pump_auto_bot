@@ -32,5 +32,7 @@ OPTIONS
     - MC
     - buy before 81k
     - sell on profit tracking
+    - listen to raydium migration event initialize2
+        - https://github.com/chainstacklabs/pump-fun-bot/blob/main/learning-examples/listen_to_raydium_migration.py
 
 
