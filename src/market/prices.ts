@@ -27,12 +27,8 @@ async function reservesStream(client: Client, token: string) {
             reject(error);
             stream.end();
         });
-        stream.on("end", () => {
-            resolve();
-        });
-        stream.on("close", () => {
-            resolve();
-        });
+        stream.on("end", () => { resolve();});
+        stream.on("close", () => {resolve();});
     });
 
     // Handle updates

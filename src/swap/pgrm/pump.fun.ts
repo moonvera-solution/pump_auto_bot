@@ -3,7 +3,7 @@ import { Account, TOKEN_PROGRAM_ID, TokenInvalidMintError, TokenInvalidOwnerErro
 import { optimizedSendAndConfirmTransaction, wrapLegacyTx } from "../../utils";
 import dotenv from 'dotenv'; dotenv.config();
 import bs58 from 'bs58';
-import { 
+import {
     CNX,
     PUMP_FUN_PROGRAM_ID,
     PUMP_FUN_FEE_PROGRAM_ID,
@@ -17,8 +17,8 @@ export async function swapPumpFun(
     side: 'buy' | 'sell',
     signerKeyPair: Keypair,
     tokenOut: string,
-    amount: bigint,
-    maxSol: bigint
+    amount: any,
+    maxSol: any
 ) {
     const isBuy = side === 'buy';
     const MINT_TOKEN_ADDRESS = tokenOut;
@@ -26,10 +26,12 @@ export async function swapPumpFun(
     const PUMP_FUN_PROGRAM_BUY_DESCRIMINATOR = '66063d1201daebea';
     const PUMP_FUN_PROGRAM_SELL_DESCRIMINATOR = '33e685a4017f83ad';
 
+    amount = BigInt(amount);
+    maxSol = BigInt(maxSol);
     const dataBuffer = Buffer.alloc(24);
     dataBuffer.write(isBuy ? PUMP_FUN_PROGRAM_BUY_DESCRIMINATOR : PUMP_FUN_PROGRAM_SELL_DESCRIMINATOR, 'hex'); // anchor descriminator, is constant
-    dataBuffer.writeBigInt64LE(amount, 8); // amount
-    dataBuffer.writeBigInt64LE(maxSol, 16); // max sol to spend, calc slippage b4hand
+    dataBuffer.writeBigInt64LE((amount), 8); // amount
+    dataBuffer.writeBigInt64LE((maxSol), 16); // max sol to spend, calc slippage b4hand
 
     const USER_MINT_ATA = getAssociatedTokenAddressSync(
         new PublicKey(MINT_TOKEN_ADDRESS),
@@ -93,11 +95,11 @@ export async function swapPumpFun(
 
     const vtx = new VersionedTransaction(wrapLegacyTx(swap_inxs, signerKeyPair, blockhash, lookupTable));
     vtx.sign([signerKeyPair]);
-    await CNX.simulateTransaction(vtx, { commitment: "processed" })
-        .then((res) => { console.log('res', res); })
-        .catch((e) => { console.error("Sim error", e) });
+    // await CNX.simulateTransaction(vtx, { commitment: "processed" })
+    //     .then((res) => { console.log('res', res); })
+    //     .catch((e) => { console.error("Sim error", e) });
 
-    // optimizedSendAndConfirmTransaction(vtx,connection, blockhash, 300);
+    optimizedSendAndConfirmTransaction(vtx, CNX, blockhash, 300);
 }
 
 
