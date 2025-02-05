@@ -4,6 +4,9 @@ import Client, { CommitmentLevel, SubscribeRequest, SubscribeUpdate } from "@tri
 import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
 import { triggerSwapPump } from "../src/swapPump";
 
+
+const PUMPFUN_FEE_PROGRAM_ID = 'TSLvdd1pWpHVjahSpsvCXUbgwsL3JAcvokwaKt1eokM';
+
 const client = new Client(
  'https://moonvera-ams.rpcpool.com/whirligig/',
  '6eb499c8-2570-43ab-bad8-fdf1c63b2b41',
@@ -65,14 +68,14 @@ const req: SubscribeRequest = {
       vote: false,
       failed: false,
       signature: undefined,
-      accountInclude: ['TSLvdd1pWpHVjahSpsvCXUbgwsL3JAcvokwaKt1eokM'],
+      accountInclude: [PUMPFUN_FEE_PROGRAM_ID],
       accountExclude: [], // Exclude any accounts if necessary
-      accountRequired: ['TSLvdd1pWpHVjahSpsvCXUbgwsL3JAcvokwaKt1eokM'],
+      accountRequired: [PUMPFUN_FEE_PROGRAM_ID],
     }
   },
   accounts: {
     pumpfun: {
-      account: ['TSLvdd1pWpHVjahSpsvCXUbgwsL3JAcvokwaKt1eokM'],
+      account: [PUMPFUN_FEE_PROGRAM_ID],
       owner: [],
       filters: [],
     }
@@ -94,20 +97,21 @@ async function parsePumpfunTx(txn: any) {
   console.log('sig', sig)
   console.log('PumpFunToken', bs58.encode(txn.transaction.message.accountKeys[1]))
   console.log('Token Creator', bs58.encode(txn.transaction.message.accountKeys[0]))
-  // const txxs = await connection.getParsedTransaction(txn, { maxSupportedTransactionVersion: 0, commitment: 'confirmed' }).catch((e) => console.error("Error on getSwapAmountOutPump", e.message, txn));
-  // console.log('txxs', txxs)
+  const txxs = await connection.getParsedTransaction(txn, { maxSupportedTransactionVersion: 0, commitment: 'confirmed' })
+                     .catch((e) => console.error("Error on getSwapAmountOutPump", e.message, txn));
+  console.log('txxs', txxs)
 
-  // if (txn && txn.meta && txn.meta.innerInstructions) {
-  //   txn.meta.innerInstructions.forEach((instruction: any) => {
-  //     instruction.instructions.forEach((inst: any) => {
-  //       console.log('inst', inst)
-  //     })
-  //   })
-  // }
-  // if (!hasTriggered) {
-  //   triggerSwapPump(bs58.encode(txn.transaction.message.accountKeys[1]));
-  //   hasTriggered = true;
-  // }
+  if (txn && txn.meta && txn.meta.innerInstructions) {
+    txn.meta.innerInstructions.forEach((instruction: any) => {
+      instruction.instructions.forEach((inst: any) => {
+        console.log('inst', inst)
+      })
+    })
+  }
+  if (!hasTriggered) {
+    triggerSwapPump(bs58.encode(txn.transaction.message.accountKeys[1]));
+    hasTriggered = true;
+  }
 
 }
 // console.log('client', client)

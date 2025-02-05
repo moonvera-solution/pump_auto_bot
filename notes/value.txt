@@ -35,4 +35,7 @@ OPTIONS
     - listen to raydium migration event initialize2
         - https://github.com/chainstacklabs/pump-fun-bot/blob/main/learning-examples/listen_to_raydium_migration.py
 
+QA
 
+const PUMPFUN_FEE_PROGRAM_ID = 'TSLvdd1pWpHVjahSpsvCXUbgwsL3JAcvokwaKt1eokM';
+how do we know pumpfun does not have many fee wallets or if they often rotate

@@ -9,15 +9,13 @@ import {
     VersionedTransaction
   } from "@solana/web3.js";
   import BigNumber from "bignumber.js";
-  import { optimizedSendAndConfirmTransaction } from "./src/optimize";
+  import { optimizedSendAndConfirmTransaction } from "./sendTx";
   import bs58 from 'bs58';
   import dotenv from 'dotenv';
 
  export async function SellPumpswap(
     tokenOut: any,
     amount: any
-  
-
   ){
     let strTx: string | null = '';
 
@@ -48,7 +46,6 @@ import {
          const blockhash = (await connection.getLatestBlockhash());
          strTx = await optimizedSendAndConfirmTransaction(tx, connection, blockhash, TX_RETRY_INTERVAL);
          console.log('strTx', strTx);
-
   }
 
 

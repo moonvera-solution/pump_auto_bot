@@ -1,3 +1,7 @@
 .env
 node_modules
 dist
+/anchor
+/anchor/dumpper
+/anchor/node_modules
+
