@@ -1,13 +1,19 @@
 import { PublicKey, Connection, Signer, ComputeBudgetProgram, Transaction, TransactionInstruction, Keypair, AddressLookupTableAccount, Commitment, ConfirmOptions, VersionedTransaction } from "@solana/web3.js";
 import { Account, TOKEN_PROGRAM_ID, TokenInvalidMintError, TokenInvalidOwnerError, ASSOCIATED_TOKEN_PROGRAM_ID, TokenInvalidAccountOwnerError, TokenAccountNotFoundError, getAssociatedTokenAddressSync, getAccount, createAssociatedTokenAccountInstruction } from "@solana/spl-token";
-import { optimizedSendAndConfirmTransaction, wrapLegacyTx } from "../sendTx";
+import { optimizedSendAndConfirmTransaction, wrapLegacyTx } from "../../utils";
 import dotenv from 'dotenv'; dotenv.config();
 import bs58 from 'bs58';
+import { 
+    CNX,
+    PUMP_FUN_PROGRAM_ID,
+    PUMP_FUN_FEE_PROGRAM_ID,
+    PUMP_FUN_GLOBAL_ACCOUNT
+} from "../../config";
 // token GosqNDHhsSNFLbmvsqyJQxMnssZVShMwYzx3RDT4pump
 
 
 
-async function swapPumpFun(
+export async function swapPumpFun(
     side: 'buy' | 'sell',
     signerKeyPair: Keypair,
     tokenOut: string,
@@ -16,8 +22,6 @@ async function swapPumpFun(
 ) {
     const isBuy = side === 'buy';
     const MINT_TOKEN_ADDRESS = tokenOut;
-    const PUMP_FUN_PROGRAM_ID = ('6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P');
-    const PUMP_FUN_FEE_PROGRAM_ID = 'CebN5WGQ4jvEPvsVU4EoHEpgzq1VV7AbicfhtW4xC9iM';
     const USER_ADDRESS = signerKeyPair.publicKey;
     const PUMP_FUN_PROGRAM_BUY_DESCRIMINATOR = '66063d1201daebea';
     const PUMP_FUN_PROGRAM_SELL_DESCRIMINATOR = '33e685a4017f83ad';
@@ -37,23 +41,17 @@ async function swapPumpFun(
         ["bonding-curve", bs58.decode(MINT_TOKEN_ADDRESS)],
         new PublicKey(PUMP_FUN_PROGRAM_ID)
     );
-
     const BONDING_CURVE_ATA = getAssociatedTokenAddressSync(
         new PublicKey(MINT_TOKEN_ADDRESS),
         BONDING_CURVE_ADDRESS, true
     );
     console.log('BONDING_CURVE_ATA', BONDING_CURVE_ATA.toBase58());
 
-    const [PUMPFUN_GLOBAL_ACCOUNT, _b2] = await PublicKey.findProgramAddressSync(
-        [Buffer.from('global')],
-        new PublicKey(PUMP_FUN_PROGRAM_ID)
-    );
-
 
     const swap_inx: TransactionInstruction = {
         programId: new PublicKey(PUMP_FUN_PROGRAM_ID),
         keys: [
-            { pubkey: new PublicKey(PUMPFUN_GLOBAL_ACCOUNT), isSigner: false, isWritable: false },
+            { pubkey: new PublicKey(PUMP_FUN_GLOBAL_ACCOUNT), isSigner: false, isWritable: false },
             { pubkey: new PublicKey(PUMP_FUN_FEE_PROGRAM_ID), isSigner: false, isWritable: true },
             { pubkey: new PublicKey(MINT_TOKEN_ADDRESS), isSigner: false, isWritable: false }, //shitcoin
             { pubkey: BONDING_CURVE_ADDRESS, isSigner: false, isWritable: true },
@@ -70,14 +68,12 @@ async function swapPumpFun(
     }
 
 
-    const connection = new Connection(process.env.TRITON_NODE!);
-    const blockhash = (await connection.getLatestBlockhash());
+    const blockhash = (await CNX.getLatestBlockhash());
     const lookupTable = null//new AddressLookupTableAccount(new PublicKey(''));
-
 
     let ata_or_inx = await getOrCreateAssociatedTokenAccountInxOrAccount(
         isBuy ? true : false, // is blind snipe
-        connection, signerKeyPair,
+        CNX, signerKeyPair,
         new PublicKey(MINT_TOKEN_ADDRESS),
         new PublicKey(USER_ADDRESS),
         USER_MINT_ATA,
@@ -97,7 +93,7 @@ async function swapPumpFun(
 
     const vtx = new VersionedTransaction(wrapLegacyTx(swap_inxs, signerKeyPair, blockhash, lookupTable));
     vtx.sign([signerKeyPair]);
-    await connection.simulateTransaction(vtx, { commitment: "processed" })
+    await CNX.simulateTransaction(vtx, { commitment: "processed" })
         .then((res) => { console.log('res', res); })
         .catch((e) => { console.error("Sim error", e) });
 
@@ -150,14 +146,16 @@ export async function getOrCreateAssociatedTokenAccountInxOrAccount(
 }
 
 
-const PUMPFUN_TOKEN = '7q8x3RpruvuK9M7Xi3Z1XdSjwESSvwqMdEQuHh6Gpump';
-swapPumpFun(
-    'sell',
-    Keypair.fromSecretKey(bs58.decode(process.env.TEST_PK!)),
-    PUMPFUN_TOKEN,
-    BigInt(1),
-    BigInt(0)
-).then((res) => { console.log(res) });
+
+// Example test
+// const PUMPFUN_TOKEN = '7q8x3RpruvuK9M7Xi3Z1XdSjwESSvwqMdEQuHh6Gpump';
+// swapPumpFun(
+//     'sell',
+//     Keypair.fromSecretKey(bs58.decode(process.env.TEST_PK!)),
+//     PUMPFUN_TOKEN,
+//     BigInt(1),
+//     BigInt(0)
+// ).then((res) => { console.log(res) });
 
 
 

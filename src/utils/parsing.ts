@@ -2,13 +2,13 @@ import "dotenv/config";
 import { PublicKey } from "@solana/web3.js";
 import Client, { CommitmentLevel, SubscribeRequest, SubscribeUpdate } from "@triton-one/yellowstone-grpc";
 import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
-import { triggerSwapPump } from "./swapPump";
+import { triggerSwapPump } from "../swap/api/swapPump";
 
 const client = new Client(
- 'https://moonvera-ams.rpcpool.com/whirligig/',
- '6eb499c8-2570-43ab-bad8-fdf1c63b2b41',
-  {"grpc.max_receive_message_length": 64 * 1024 * 1024} // 64MiB
-  );
+  process.env.TRITON_NODE_URL,
+  process.env.TRITON_NODE_KEY,
+  { "grpc.max_receive_message_length": 64 * 1024 * 1024 } // 64MiB
+);
 // async function handleStream(client: Client, args: SubscribeRequest) {
 //   // Subscribe for events
 //   // console.log('subscribing')
@@ -91,7 +91,7 @@ async function parsePumpfunTx(txn: any) {
 
   const sig = bs58.encode(txn.transaction);
   console.log('sig', sig)
-//   triggerSwapPump(bs58.encode(txn.transaction.message.accountKeys[1]))
+  //   triggerSwapPump(bs58.encode(txn.transaction.message.accountKeys[1]))
 }
 // console.log('client', client)
 parsePumpfunTx('4Q8KuDoy5283A2vhxSfmL4rLzovJGnJF27SRYpcfaT55fYWNVVhxfBCLNe65bG2rRuHYr7xizPPMysSdcSb261KS');

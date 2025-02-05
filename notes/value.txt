@@ -1,7 +1,7 @@
 
 
 CRITICAL 
-- SWAP in PUMP CURVE PROGRAM
+- ✅ SWAP in PUMP CURVE PROGRAM
 - SWAP in RAYDIUM POOL PROGRAM
 
 OPTIONS
@@ -17,7 +17,7 @@ OPTIONS
     --- tech ---
     ✅ 0 - geyser wallet
         - catches buy swap
-            - geyser for token $$ & MC = track reserves of pump curve (token)
+            - geyser for token $$ & MC = track reserves of pump curve ata
             - triggers sell swap
     ✅ 1 - geyser catch token
          - buy swap 

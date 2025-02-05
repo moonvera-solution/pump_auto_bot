@@ -2,12 +2,12 @@ import "dotenv/config";
 import { PublicKey } from "@solana/web3.js";
 import Client, { CommitmentLevel, SubscribeRequest, SubscribeUpdate } from "@triton-one/yellowstone-grpc";
 import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
-import { triggerSwapPump } from "./swapPump";
+import { triggerSwapPump } from "./swap/api/swapPump";
 import { SolanaParser } from "@shyft-to/solana-transaction-parser";
 
 const client = new Client(
- 'https://moonvera-ams.rpcpool.com/whirligig/',
- '6eb499c8-2570-43ab-bad8-fdf1c63b2b41',
+  process.env.TRITON_NODE_URL,
+  process.env.TRITON_NODE_KEY,
   {"grpc.max_receive_message_length": 64 * 1024 * 1024} // 64MiB
   );
 async function handleStream(client: Client, args: SubscribeRequest) {
@@ -65,7 +65,7 @@ const req: SubscribeRequest = {
       vote: false,
       failed: false,
       signature: undefined,
-      accountInclude: ['675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8','6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P'],
+      accountInclude: ['CebN5WGQ4jvEPvsVU4EoHEpgzq1VV7AbicfhtW4xC9iM'],
       accountExclude: [], // Exclude any accounts if necessary
       accountRequired: ['suqh5sHtr8HyJ7q8scBimULPkPpA557prMG47xCHQfK'],
     }

@@ -2,7 +2,7 @@ import "dotenv/config";
 import { PublicKey , Connection } from "@solana/web3.js";
 import Client, { CommitmentLevel, SubscribeRequest, SubscribeUpdate } from "@triton-one/yellowstone-grpc";
 import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
-import { triggerSwapPump } from "../src/swapPump";
+import { triggerSwapPump } from "../src/swap/api/swapPump";
 
 
 const PUMPFUN_FEE_PROGRAM_ID = 'TSLvdd1pWpHVjahSpsvCXUbgwsL3JAcvokwaKt1eokM';

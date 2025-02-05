@@ -9,7 +9,7 @@ import {
   VersionedTransaction
 } from "@solana/web3.js";
 import BigNumber from "bignumber.js";
-import { optimizedSendAndConfirmTransaction } from "./sendTx";
+import { optimizedSendAndConfirmTransaction } from "../../utils";
 import bs58 from 'bs58';
 import dotenv from 'dotenv';dotenv.config();
 import { SellPumpswap } from "./pumpSell";
