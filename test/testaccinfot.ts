@@ -26,7 +26,8 @@ async function blindSnipe(client: Client, args: SubscribeRequest) {
 
   stream.on("data", (data) => {
     if (data.filters.includes('pumpfun_blind_snipe')) {
-      parsePumpfunTx(data.transaction.transaction)
+      // parsePumpfunTx(data.transaction.transaction);
+      tOutPut(data);
     }
   });
 
@@ -75,10 +76,38 @@ const req: SubscribeRequest = {
   commitment: CommitmentLevel.PROCESSED,
 }
 
+export function decodeTransact(data) {
+  const output = bs58.encode(Buffer.from(data, 'base64'))
+  return output;
+}
+
+
+export function printTx(data) {
+  const dataTx = data.transaction.transaction
+  const signature = decodeTransact(dataTx.signature);
+  const message = dataTx.transaction?.message
+  const header = message.header;
+  const accountKeys = message.accountKeys.map((t) => {
+    return decodeTransact(t)
+  })
+  const recentBlockhash = decodeTransact(message.recentBlockhash);
+  const instructions = message.instructions
+  const meta = dataTx?.meta
+  return {
+    signature,
+    message: {
+      header,
+      accountKeys,
+      recentBlockhash,
+      instructions
+    },
+    meta
+  }
+}
+
 let hasTriggered = false; // Global flag to track if we triggered once
 
 async function parsePumpfunTx(txn: any) {
-
   const sig = bs58.encode(txn.transaction.signatures[0]);
   const token = bs58.encode(txn.transaction.message.accountKeys[1])
   console.log('PumpFunToken', token)
@@ -97,10 +126,7 @@ async function parsePumpfunTx(txn: any) {
   // }
 
   if (!hasTriggered) {
-    //  catch minting inx to get supply and buy a % of it not token amount
-    // 1st param on token terms, buy as much as possible -1 = int.max but cannot be more than total supply 
-    // 2nd param on sol terms, max sol to spend, is snipe no price to calculate slippage
-    await swapPumpFun('buy', BOT_KEY_PAIR, token, 500_000_000_000, 500_000_000)
+    // await swapPumpFun('buy', BOT_KEY_PAIR, token, 500_000_000_000, 500_000_000)
     hasTriggered = true;
   }
 

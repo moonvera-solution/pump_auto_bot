@@ -4,37 +4,26 @@ import Client, { CommitmentLevel, SubscribeRequest, SubscribeUpdate } from "@tri
 import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
 import { SolanaParser } from "@shyft-to/solana-transaction-parser";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
-import { PUMP_FUN_PROGRAM_ID, PUMP_FUN_FEE_PROGRAM_ID, PUMP_FUN_GLOBAL_ACCOUNT } from "../config";
+import { SOL_MINT_ADDRESS, PUMP_FUN_PROGRAM_ID, PUMP_FUN_FEE_PROGRAM_ID, PUMP_FUN_GLOBAL_ACCOUNT } from "../config";
+import { indexOf } from "lodash";
 
 
-async function reservesStream(client: Client, token: string) {
+async function reservesStream(client: Client, tokenPriceCurve: PublicKey) {
     const stream = await client.subscribe();
-
-    const [BONDING_CURVE_ADDRESS, _b0] = await PublicKey.findProgramAddressSync(
-        [Buffer.from("bonding-curve"), bs58.decode(token)],
-        new PublicKey(PUMP_FUN_PROGRAM_ID)
-    );
-
-
-    const BONDING_CURVE_ATA = getAssociatedTokenAddressSync(
-        new PublicKey(token),
-        BONDING_CURVE_ADDRESS, true
-    );
-
     const streamClosed = new Promise<void>((resolve, reject) => {
         stream.on("error", (error) => {
             console.log("ERROR", error);
             reject(error);
             stream.end();
         });
-        stream.on("end", () => { resolve();});
-        stream.on("close", () => {resolve();});
+        stream.on("end", () => { resolve(); });
+        stream.on("close", () => { resolve(); });
     });
 
     // Handle updates
     stream.on("data", (data) => {
         if (data.filters.includes('pumpfun_swap')) {
-            parsePumpfunTx(data.transaction)
+            console.log(parsePumpFunSwaps(tokenPriceCurve.toBase58(), data));
         }
     });
 
@@ -48,7 +37,7 @@ async function reservesStream(client: Client, token: string) {
                     signature: undefined,
                     accountInclude: [PUMP_FUN_GLOBAL_ACCOUNT, PUMP_FUN_FEE_PROGRAM_ID],
                     accountExclude: [], // Exclude any accounts if necessary
-                    accountRequired: [BONDING_CURVE_ATA.toBase58()],
+                    accountRequired: [tokenPriceCurve.toBase58()],
                 }
             },
             accounts: {},
@@ -71,20 +60,79 @@ async function reservesStream(client: Client, token: string) {
         console.error(reason);
         throw reason;
     });
-
     await streamClosed;
 }
 
-
-
-// TODO extract price from reserves or from curve_ata balanceOf token/sol  ?
-async function parsePumpfunTx(txn: any) {
-    const sig = bs58.encode(txn.transaction.signature);
-    console.log('txn.transaction.', txn.transaction)
+export function decodeTransact(data) {
+    const output = bs58.encode(Buffer.from(data, 'base64'))
+    return output;
 }
 
-const client = new Client(process.env.TRITON_NODE_URL, process.env.TRITON_NODE_KEY, { "grpc.max_receive_message_length": 64 * 1024 * 1024 }); // 64MiB
-const PUMP_FUN_TOKEN = '6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P'
+export function parsePumpFunSwaps(tokenPriceCurve: string, data: any) {
+    const dataTx = data.transaction.transaction
+    const signature = decodeTransact(dataTx.signature);
 
-reservesStream(client, PUMP_FUN_TOKEN);
+    const message = dataTx.transaction?.message
+    const header = message.header;
+    const accountKeys = message.accountKeys.map((t) => { return decodeTransact(t) });
+
+    const traderAddress = decodeTransact(message.accountKeys[0]);
+    const traderSolPreBalance = dataTx.meta.preBalances[0];
+    const traderSolPostBalance = dataTx.meta.postBalances[0];
+
+    const traderPostRecord = dataTx?.meta?.preTokenBalances.filter((t) => t.owner === traderAddress)[0];
+    const traderTokenPreBalance = traderPostRecord?.uiTokenAmount?.amount;
+
+    const traderTokenPostRecord = dataTx?.meta?.postTokenBalances.filter((t) => t.owner === traderAddress)[0];
+    const traderTokenPostBalance = traderTokenPostRecord?.uiTokenAmount?.amount;
+
+
+    const curveIndex = accountKeys.indexOf(accountKeys => accountKeys.owner === tokenPriceCurve);
+    console.log('curveIndex', curveIndex);
+    const curveAddressSolPreBalance = dataTx.meta.preBalances[curveIndex];
+    const curveAddressSolPostBalance = dataTx.meta.postBalances[curveIndex];
+    const curveTokenPreBalance = (dataTx?.meta?.preTokenBalances.some((t) => t.owner === tokenPriceCurve)).uiTokenAmount;
+    const curveTokenPostBalance = (dataTx?.meta?.postTokenBalances.some((t) => t.owner === tokenPriceCurve)).uiTokenAmount;
+
+    return {
+        // signature,
+        traderAddress,
+        traderSolPreBalance,
+        traderSolPostBalance,
+        traderTokenPreBalance,
+        traderTokenPostBalance,
+        curveAddressSolPreBalance,
+        curveAddressSolPostBalance,
+        curveTokenPreBalance,
+        curveTokenPostBalance,
+    }
+    // const recentBlockhash = decodeTransact(message.recentBlockhash);x`x
+    // const instructions = message.instructions
+    // const meta = dataTx?.meta
+    // return {
+    //     signature,
+    //     message: {
+    //         header,
+    //         accountKeys,
+    //         recentBlockhash,
+    //         instructions
+    //     },
+    //     meta,
+    // }
+}
+
+
+export async function priceWs(token: string) {
+    const client = new Client(process.env.TRITON_NODE_URL, process.env.TRITON_NODE_KEY, { "grpc.max_receive_message_length": 64 * 1024 * 1024 }); // 64MiB
+    const [tokenPriceCurve, _b0] = await PublicKey.findProgramAddressSync(
+        [Buffer.from("bonding-curve"), bs58.decode(token)], new PublicKey(PUMP_FUN_PROGRAM_ID)
+    );
+    reservesStream(client, tokenPriceCurve);
+
+}
+
+priceWs('DUmjMcnv7NHMKhXeBZUh73aFSYtoKA5jifmZ8Ah5pump');
+// BONDING_CURVE_ADDRESS kBbXJwUyqqzL8SFD43jXmvkFcjV22JXPiQExieCFg91
+// BONDING_CURVE_ATA 9xG96zLhQcDXRAtq53zom4MLps3kbxBnkv3t4xkKJLva
+// BONDING_CURVE_ATA_SOL 3hobuXvisZEGbTJKtQ9jgGvULNkZdJuTo2yd8M9VtyNm
 
