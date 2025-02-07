@@ -488,10 +488,10 @@
   dependencies:
     tslib "^2.8.0"
 
-"@triton-one/yellowstone-grpc@^2.0.0":
-  version "2.0.0"
-  resolved "https://registry.yarnpkg.com/@triton-one/yellowstone-grpc/-/yellowstone-grpc-2.0.0.tgz#32002eac1154490e473e4967c6ad21a8bec21a36"
-  integrity sha512-kJ6VR6nK+m5vqbL2+y/vh8H0H5J0BR30rW0tYPIL9yu6zxocylNhubI0aWDSeHucN60X73qbPK1gs7geQiuIrg==
+"@triton-one/yellowstone-grpc@^2.1.0":
+  version "2.1.0"
+  resolved "https://registry.yarnpkg.com/@triton-one/yellowstone-grpc/-/yellowstone-grpc-2.1.0.tgz#9f311e006f0a01400eff7d673bc108ceda0b5f83"
+  integrity sha512-12opvhpXz+ukIb1/ZTLNCzturOlpJ83JolYVOL90jdW6Q8p1PtBfYWM6FKv04PvKkO+KotG5nPXgTwlTAEOuYw==
   dependencies:
     "@grpc/grpc-js" "^1.8.0"
 

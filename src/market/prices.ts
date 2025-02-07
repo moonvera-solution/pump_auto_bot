@@ -87,12 +87,15 @@ export function parsePumpFunSwaps(tokenPriceCurve: string, data: any) {
     const traderTokenPostBalance = traderTokenPostRecord?.uiTokenAmount?.amount;
 
 
-    const curveIndex = accountKeys.indexOf(accountKeys => accountKeys.owner === tokenPriceCurve);
-    console.log('curveIndex', curveIndex);
+    const curveIndex = accountKeys.indexOf(tokenPriceCurve);
     const curveAddressSolPreBalance = dataTx.meta.preBalances[curveIndex];
     const curveAddressSolPostBalance = dataTx.meta.postBalances[curveIndex];
-    const curveTokenPreBalance = (dataTx?.meta?.preTokenBalances.some((t) => t.owner === tokenPriceCurve)).uiTokenAmount;
-    const curveTokenPostBalance = (dataTx?.meta?.postTokenBalances.some((t) => t.owner === tokenPriceCurve)).uiTokenAmount;
+    
+    const curvePreBalanceRecord = (dataTx?.meta?.preTokenBalances.filter((t) => t.owner === tokenPriceCurve))[0]
+    const curveTokenPreBalance = curvePreBalanceRecord?.uiTokenAmount?.amount;
+
+    const curvePostBalanceRecord = (dataTx?.meta?.postTokenBalances.filter((t) => t.owner === tokenPriceCurve))[0]
+    const curveTokenPostBalance = curvePostBalanceRecord?.uiTokenAmount?.amount;
 
     return {
         // signature,
@@ -131,7 +134,7 @@ export async function priceWs(token: string) {
 
 }
 
-priceWs('DUmjMcnv7NHMKhXeBZUh73aFSYtoKA5jifmZ8Ah5pump');
+priceWs('4FEfs1oxt4bUuzmDtntp4t2FZydVKWNxGKLRGDBppump');
 // BONDING_CURVE_ADDRESS kBbXJwUyqqzL8SFD43jXmvkFcjV22JXPiQExieCFg91
 // BONDING_CURVE_ATA 9xG96zLhQcDXRAtq53zom4MLps3kbxBnkv3t4xkKJLva
 // BONDING_CURVE_ATA_SOL 3hobuXvisZEGbTJKtQ9jgGvULNkZdJuTo2yd8M9VtyNm
