@@ -23,6 +23,8 @@ async function reservesStream(client: Client, tokenPriceCurve: PublicKey) {
     // Handle updates
     stream.on("data", (data) => {
         if (data.filters.includes('pumpfun_swap')) {
+            const dataTx = tOutPut(data);
+            // console.log(dataTx);
             console.log(parsePumpFunSwaps(tokenPriceCurve.toBase58(), data));
         }
     });
@@ -98,7 +100,7 @@ export function parsePumpFunSwaps(tokenPriceCurve: string, data: any) {
     const curveTokenPostBalance = curvePostBalanceRecord?.uiTokenAmount?.amount;
 
     return {
-        // signature,
+        signature,
         traderAddress,
         traderSolPreBalance,
         traderSolPostBalance,
@@ -122,6 +124,30 @@ export function parsePumpFunSwaps(tokenPriceCurve: string, data: any) {
     //     },
     //     meta,
     // }
+}
+
+
+export function tOutPut(data){
+    const dataTx = data.transaction.transaction
+    const signature = decodeTransact(dataTx.signature);
+    const message = dataTx.transaction?.message
+    const header = message.header;
+    const accountKeys = message.accountKeys.map((t)=>{
+        return  decodeTransact(t)
+    })
+    const recentBlockhash =  decodeTransact(message.recentBlockhash);
+    const instructions = message.instructions
+    const meta = dataTx?.meta
+    return {
+        signature,
+        message:{
+           header,
+           accountKeys,
+           recentBlockhash,
+           instructions
+        },
+        meta
+    }
 }
 
 
