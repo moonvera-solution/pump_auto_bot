@@ -23,8 +23,6 @@ async function reservesStream(client: Client, tokenPriceCurve: PublicKey) {
     // Handle updates
     stream.on("data", (data) => {
         if (data.filters.includes('pumpfun_swap')) {
-            const dataTx = tOutPut(data);
-            // console.log(dataTx);
             console.log(parsePumpFunSwaps(tokenPriceCurve.toBase58(), data));
         }
     });
@@ -78,16 +76,16 @@ export function parsePumpFunSwaps(tokenPriceCurve: string, data: any) {
     const header = message.header;
     const accountKeys = message.accountKeys.map((t) => { return decodeTransact(t) });
 
-    const traderAddress = decodeTransact(message.accountKeys[0]);
     const traderSolPreBalance = dataTx.meta.preBalances[0];
     const traderSolPostBalance = dataTx.meta.postBalances[0];
 
-    const traderPostRecord = dataTx?.meta?.preTokenBalances.filter((t) => t.owner === traderAddress)[0];
-    const traderTokenPreBalance = traderPostRecord?.uiTokenAmount?.amount;
 
-    const traderTokenPostRecord = dataTx?.meta?.postTokenBalances.filter((t) => t.owner === traderAddress)[0];
-    const traderTokenPostBalance = traderTokenPostRecord?.uiTokenAmount?.amount;
+    const traderPreTokenRecord = dataTx?.meta?.preTokenBalances.filter((t) => t.owner !== tokenPriceCurve && accountKeys.includes(t.owner))
+    const traderTokenPreBalance = traderPreTokenRecord[0].uiTokenAmount.amount
+    const traderAddress = traderPreTokenRecord[0].owner
 
+    const traderPostTokenRecord = dataTx?.meta?.postTokenBalances.filter((t) => t.owner !== tokenPriceCurve && accountKeys.includes(t.owner))
+    const traderTokenPostBalance = traderPostTokenRecord?.uiTokenAmount?.amount;
 
     const curveIndex = accountKeys.indexOf(tokenPriceCurve);
     const curveAddressSolPreBalance = dataTx.meta.preBalances[curveIndex];
@@ -106,50 +104,13 @@ export function parsePumpFunSwaps(tokenPriceCurve: string, data: any) {
         traderSolPostBalance,
         traderTokenPreBalance,
         traderTokenPostBalance,
+        tokenPriceCurve,
         curveAddressSolPreBalance,
         curveAddressSolPostBalance,
         curveTokenPreBalance,
         curveTokenPostBalance,
     }
-    // const recentBlockhash = decodeTransact(message.recentBlockhash);x`x
-    // const instructions = message.instructions
-    // const meta = dataTx?.meta
-    // return {
-    //     signature,
-    //     message: {
-    //         header,
-    //         accountKeys,
-    //         recentBlockhash,
-    //         instructions
-    //     },
-    //     meta,
-    // }
 }
-
-
-export function tOutPut(data){
-    const dataTx = data.transaction.transaction
-    const signature = decodeTransact(dataTx.signature);
-    const message = dataTx.transaction?.message
-    const header = message.header;
-    const accountKeys = message.accountKeys.map((t)=>{
-        return  decodeTransact(t)
-    })
-    const recentBlockhash =  decodeTransact(message.recentBlockhash);
-    const instructions = message.instructions
-    const meta = dataTx?.meta
-    return {
-        signature,
-        message:{
-           header,
-           accountKeys,
-           recentBlockhash,
-           instructions
-        },
-        meta
-    }
-}
-
 
 export async function priceWs(token: string) {
     const client = new Client(process.env.TRITON_NODE_URL, process.env.TRITON_NODE_KEY, { "grpc.max_receive_message_length": 64 * 1024 * 1024 }); // 64MiB
@@ -160,7 +121,7 @@ export async function priceWs(token: string) {
 
 }
 
-priceWs('4FEfs1oxt4bUuzmDtntp4t2FZydVKWNxGKLRGDBppump');
+priceWs('4xk8LPXFk7TMEQ1nfT4AnEs8MmEB4BfHfcVAeULGpump');
 // BONDING_CURVE_ADDRESS kBbXJwUyqqzL8SFD43jXmvkFcjV22JXPiQExieCFg91
 // BONDING_CURVE_ATA 9xG96zLhQcDXRAtq53zom4MLps3kbxBnkv3t4xkKJLva
 // BONDING_CURVE_ATA_SOL 3hobuXvisZEGbTJKtQ9jgGvULNkZdJuTo2yd8M9VtyNm
