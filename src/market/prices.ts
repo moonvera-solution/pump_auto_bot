@@ -6,6 +6,7 @@ import { SolanaParser } from "@shyft-to/solana-transaction-parser";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { SOL_MINT_ADDRESS, PUMP_FUN_PROGRAM_ID, PUMP_FUN_FEE_PROGRAM_ID, PUMP_FUN_GLOBAL_ACCOUNT } from "../config";
 import { indexOf } from "lodash";
+import BigNumber from "bignumber.js";
 
 
 async function reservesStream(client: Client, tokenPriceCurve: PublicKey) {
@@ -69,60 +70,90 @@ export function decodeTransact(data) {
 }
 
 export function parsePumpFunSwaps(tokenPriceCurve: string, data: any) {
-    const dataTx = data.transaction.transaction
+    const { transaction: dataTx } = data.transaction;
     const signature = decodeTransact(dataTx.signature);
-
-    const message = dataTx.transaction?.message
-    const header = message.header;
-    const accountKeys = message.accountKeys.map((t) => { return decodeTransact(t) });
-
-    const traderSolPreBalance = dataTx.meta.preBalances[0];
-    const traderSolPostBalance = dataTx.meta.postBalances[0];
-
-
-    const traderPreTokenRecord = dataTx?.meta?.preTokenBalances.filter((t) => t.owner !== tokenPriceCurve && accountKeys.includes(t.owner))
-    const traderTokenPreBalance = traderPreTokenRecord[0].uiTokenAmount.amount
-    const traderAddress = traderPreTokenRecord[0].owner
-
-    const traderPostTokenRecord = dataTx?.meta?.postTokenBalances.filter((t) => t.owner !== tokenPriceCurve && accountKeys.includes(t.owner))
-    const traderTokenPostBalance = traderPostTokenRecord?.uiTokenAmount?.amount;
+    const { message } = dataTx.transaction;
+    const accountKeys = message.accountKeys.map(decodeTransact);
 
     const curveIndex = accountKeys.indexOf(tokenPriceCurve);
-    const curveAddressSolPreBalance = dataTx.meta.preBalances[curveIndex];
-    const curveAddressSolPostBalance = dataTx.meta.postBalances[curveIndex];
-    
-    const curvePreBalanceRecord = (dataTx?.meta?.preTokenBalances.filter((t) => t.owner === tokenPriceCurve))[0]
+    const [curveAddressSolPreBalance, curveAddressSolPostBalance] = [
+        dataTx.meta.preBalances[curveIndex],
+        dataTx.meta.postBalances[curveIndex]
+    ];
+
+    // console.log( 'dataTx?.meta?.preTokenBalances:: ',dataTx?.meta?.preTokenBalances)
+    const curvePreBalanceRecord = dataTx?.meta?.preTokenBalances.find(t => t.owner === tokenPriceCurve);
     const curveTokenPreBalance = curvePreBalanceRecord?.uiTokenAmount?.amount;
 
-    const curvePostBalanceRecord = (dataTx?.meta?.postTokenBalances.filter((t) => t.owner === tokenPriceCurve))[0]
+
+    // console.log( 'dataTx?.meta?.postTokenBalances:: ',dataTx?.meta?.postTokenBalances)
+
+    const curvePostBalanceRecord = dataTx?.meta?.postTokenBalances.find(t => t.owner === tokenPriceCurve);
     const curveTokenPostBalance = curvePostBalanceRecord?.uiTokenAmount?.amount;
 
-    return {
+
+    /**
+     * BUY = PRE_BALANCE < POST_BALANCE SOL GOES IN POOL
+     * SELL = PRE_BALANCE > POST_BALANCE SOL GOES OUT OF POOL
+     * 
+     * BUY = PRE_BALANCE > POST_BALANCE TOKEN GOES OUT POOL
+     * SELL = PRE_BALANCE < POST_BALANCE TOKEN GOES IN OF POOL
+     * 
+     * 
+     *  dif sol / dif token
+     */
+   
+    if(curveTokenPostBalance === curveTokenPreBalance) return;
+
+    let price = ((new BigNumber(Math.max(curveAddressSolPostBalance, curveAddressSolPreBalance))
+            .minus(new BigNumber(Math.min(curveAddressSolPostBalance, curveAddressSolPreBalance)))).div(1e9))
+            .div((new BigNumber(Math.max(curveTokenPostBalance, curveTokenPreBalance))
+            .minus(new BigNumber(Math.min(curveTokenPostBalance, curveTokenPreBalance)))).dividedBy(1e6))
+
+    return { 
         signature,
-        traderAddress,
-        traderSolPreBalance,
-        traderSolPostBalance,
-        traderTokenPreBalance,
-        traderTokenPostBalance,
-        tokenPriceCurve,
-        curveAddressSolPreBalance,
-        curveAddressSolPostBalance,
-        curveTokenPreBalance,
-        curveTokenPostBalance,
-    }
+        price: Number(price)
+    };
 }
 
-export async function priceWs(token: string) {
+export async function pumpFunPriceWs(token: string) {
     const client = new Client(process.env.TRITON_NODE_URL, process.env.TRITON_NODE_KEY, { "grpc.max_receive_message_length": 64 * 1024 * 1024 }); // 64MiB
     const [tokenPriceCurve, _b0] = await PublicKey.findProgramAddressSync(
         [Buffer.from("bonding-curve"), bs58.decode(token)], new PublicKey(PUMP_FUN_PROGRAM_ID)
     );
+    console.log( 'tokenPriceCurve:: ',tokenPriceCurve)
     reservesStream(client, tokenPriceCurve);
 
 }
 
-priceWs('4xk8LPXFk7TMEQ1nfT4AnEs8MmEB4BfHfcVAeULGpump');
+pumpFunPriceWs('B7sLfUFeoFxpCzhjtrnnqtshoGMxRW1zbAenAk3Ypump');
 // BONDING_CURVE_ADDRESS kBbXJwUyqqzL8SFD43jXmvkFcjV22JXPiQExieCFg91
 // BONDING_CURVE_ATA 9xG96zLhQcDXRAtq53zom4MLps3kbxBnkv3t4xkKJLva
 // BONDING_CURVE_ATA_SOL 3hobuXvisZEGbTJKtQ9jgGvULNkZdJuTo2yd8M9VtyNm
 
+
+
+/**
+ *     // const traderSolPreBalance = dataTx.meta.preBalances[0];
+    // const traderSolPostBalance = dataTx.meta.postBalances[0];
+
+    // const traderPreTokenRecord = dataTx?.meta?.preTokenBalances.filter((t) => t.owner !== tokenPriceCurve && accountKeys.includes(t.owner))
+    
+    // const traderTokenPreBalance = traderPreTokenRecord[0]?.uiTokenAmount?.amount
+
+    // const traderPostTokenRecord = dataTx?.meta?.postTokenBalances.filter((t) => t.owner !== tokenPriceCurve && accountKeys.includes(t.owner))
+    
+    // console.log('traderPostTokenRecord:: ',JSON.parse(JSON.stringify(dataTx?.meta?.postTokenBalances)));
+    // const traderTokenPostBalance = traderPostTokenRecord[0]?.uiTokenAmount?.amount;
+
+            // traderSolPreBalance,
+        // traderSolPostBalance,
+        // traderTokenPreBalance,
+        // traderTokenPostBalance,
+        // tokenPriceCurve,
+        // curveAddressSolPreBalance,
+        // curveAddressSolPostBalance,
+        // curveTokenPreBalance,
+        // curveTokenPostBalance,
+    
+ */

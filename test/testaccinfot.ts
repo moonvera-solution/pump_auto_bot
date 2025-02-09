@@ -5,8 +5,9 @@ import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
 import { triggerSwapPump } from "../src/swap/api/swapPump";
 import { swapPumpFun } from "../src/swap/pgrm/pump.fun";
 import { CNX, BOT_KEY_PAIR } from "../src/config";
+import { pumpFunPriceWs } from "src/market/prices";
 
-
+const PUMPFUN_TOKEN_SUPPLY = 1_000_000_000;
 const PUMPFUN_FEE_PROGRAM_ID = 'TSLvdd1pWpHVjahSpsvCXUbgwsL3JAcvokwaKt1eokM';
 
 const client = new Client(
@@ -24,10 +25,13 @@ async function blindSnipe(client: Client, args: SubscribeRequest) {
     stream.on("close", () => { resolve(); });
   });
 
+
+  stream.on("close", () => {
+    console.log("Stream closed");
+  });
   stream.on("data", (data) => {
     if (data.filters.includes('pumpfun_blind_snipe')) {
-      // parsePumpfunTx(data.transaction.transaction);
-      tOutPut(data);
+      parsePumpfunTx(data.transaction.transaction, stream)
     }
   });
 
@@ -76,59 +80,17 @@ const req: SubscribeRequest = {
   commitment: CommitmentLevel.PROCESSED,
 }
 
-export function decodeTransact(data) {
-  const output = bs58.encode(Buffer.from(data, 'base64'))
-  return output;
-}
-
-
-export function printTx(data) {
-  const dataTx = data.transaction.transaction
-  const signature = decodeTransact(dataTx.signature);
-  const message = dataTx.transaction?.message
-  const header = message.header;
-  const accountKeys = message.accountKeys.map((t) => {
-    return decodeTransact(t)
-  })
-  const recentBlockhash = decodeTransact(message.recentBlockhash);
-  const instructions = message.instructions
-  const meta = dataTx?.meta
-  return {
-    signature,
-    message: {
-      header,
-      accountKeys,
-      recentBlockhash,
-      instructions
-    },
-    meta
-  }
-}
-
 let hasTriggered = false; // Global flag to track if we triggered once
 
-async function parsePumpfunTx(txn: any) {
+async function parsePumpfunTx(txn: any, stream: any) {
   const sig = bs58.encode(txn.transaction.signatures[0]);
   const token = bs58.encode(txn.transaction.message.accountKeys[1])
-  console.log('PumpFunToken', token)
-  console.log('Token Creator', bs58.encode(txn.transaction.message.accountKeys[0]))
+  console.log('sig', sig)
 
-
-  await CNX.getParsedTransaction(txn, { maxSupportedTransactionVersion: 0, commitment: 'confirmed' })
-    .catch((e) => console.error("Error on getSwapAmountOutPump", e.message, txn));
-
-  // if (txn && txn.meta && txn.meta.innerInstructions) {
-  //   txn.meta.innerInstructions.forEach((instruction: any) => {
-  //     instruction.instructions.forEach((inst: any) => {
-  //       console.log('inst', inst)
-  //     })
-  //   })
-  // }
-
-  if (!hasTriggered) {
-    // await swapPumpFun('buy', BOT_KEY_PAIR, token, 500_000_000_000, 500_000_000)
-    hasTriggered = true;
-  }
+  stream.stop()
+  // await swapPumpFun('buy', BOT_KEY_PAIR, token, 200_000 * 1e6, 0.15 * 1e9)
+  // pumpFunPriceWs(token)
+  // hasTriggered = true;
 
 }
 // console.log('client', client)

@@ -88,7 +88,7 @@ export async function swapPumpFun(
     if (ata_or_inx instanceof TransactionInstruction) swap_inxs.push(ata_or_inx);
     swap_inxs.push(swap_inx);
 
-    let maxPriorityFee = Math.ceil(Number.parseFloat(String('0.00001')) * 1e9);
+    let maxPriorityFee = Math.ceil(Number.parseFloat(String('0.001')) * 1e9);
 
     swap_inxs.push(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: maxPriorityFee * 10 }));
     swap_inxs.push(ComputeBudgetProgram.setComputeUnitLimit({ units: 100000 }));
