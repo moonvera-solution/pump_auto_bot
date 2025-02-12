@@ -59,7 +59,6 @@ import {
   
       // retry while loop
       while (!confirmedTx) {
-  
         confirmedTx = await Promise.race([
           confirmTransactionPromise,
           new Promise((resolve) =>

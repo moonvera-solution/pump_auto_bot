@@ -95,11 +95,11 @@ export async function swapPumpFun(
 
     const vtx = new VersionedTransaction(wrapLegacyTx(swap_inxs, signerKeyPair, blockhash, lookupTable));
     vtx.sign([signerKeyPair]);
-    // await CNX.simulateTransaction(vtx, { commitment: "processed" })
-    //     .then((res) => { console.log('res', res); })
-    //     .catch((e) => { console.error("Sim error", e) });
+    await CNX.simulateTransaction(vtx, { commitment: "processed" })
+        .then((res) => { console.log('res', res); })
+        .catch((e) => { console.error("Sim error", e) });
 
-    optimizedSendAndConfirmTransaction(vtx, CNX, blockhash, 300);
+    return optimizedSendAndConfirmTransaction(vtx, CNX, blockhash, 300);
 }
 
 

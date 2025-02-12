@@ -4,13 +4,39 @@ import Client, { CommitmentLevel, SubscribeRequest, SubscribeUpdate } from "@tri
 import { bs58 } from "@project-serum/anchor/dist/cjs/utils/bytes";
 import { SolanaParser } from "@shyft-to/solana-transaction-parser";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
-import { SOL_MINT_ADDRESS, PUMP_FUN_PROGRAM_ID, PUMP_FUN_FEE_PROGRAM_ID, PUMP_FUN_GLOBAL_ACCOUNT } from "../config";
+import { SOL_MINT_ADDRESS, PUMP_FUN_PROGRAM_ID, PUMP_FUN_FEE_PROGRAM_ID, PUMP_FUN_GLOBAL_ACCOUNT, BOT_KEY_PAIR } from "../config";
 import { indexOf } from "lodash";
+import { swapPumpFun } from "../swap/pgrm/pump.fun";
 import BigNumber from "bignumber.js";
 
 
-async function reservesStream(client: Client, tokenPriceCurve: PublicKey) {
+function isProfit(price: number, solIn: number, tokenOut: number) {
+    return new BigNumber(tokenOut * price).gt(solIn)
+}
+
+async function reservesStream(
+    client: Client,
+    token: string,
+    tokenPriceCurve: PublicKey,
+    solIn: number,
+    tokenOut: number) {
+
     const stream = await client.subscribe();
+
+    stream.on("data", (data) => {
+        if (data.filters.includes('pumpfun_swap')) {
+            const { price } = (parsePumpFunSwaps(token, tokenPriceCurve.toBase58(), data));
+            console.log(
+                'current price:: ', new BigNumber(tokenOut * price).toString(), "\n",
+                'initial price:: ', new BigNumber(solIn).toString()
+            );
+            if (isProfit(price, solIn, tokenOut)) {
+                swapPumpFun('sell', BOT_KEY_PAIR, token, 200_000 * 1e6, 0.15 * 1e9).then(() => {
+                    stream.end()
+                })
+            }
+        }
+    });
     const streamClosed = new Promise<void>((resolve, reject) => {
         stream.on("error", (error) => {
             console.log("ERROR", error);
@@ -20,14 +46,6 @@ async function reservesStream(client: Client, tokenPriceCurve: PublicKey) {
         stream.on("end", () => { resolve(); });
         stream.on("close", () => { resolve(); });
     });
-
-    // Handle updates
-    stream.on("data", (data) => {
-        if (data.filters.includes('pumpfun_swap')) {
-            console.log(parsePumpFunSwaps(tokenPriceCurve.toBase58(), data));
-        }
-    });
-
     // Send subscribe request
     await new Promise<void>((resolve, reject) => {
         stream.write({
@@ -69,7 +87,7 @@ export function decodeTransact(data) {
     return output;
 }
 
-export function parsePumpFunSwaps(tokenPriceCurve: string, data: any) {
+export function parsePumpFunSwaps(token: string, tokenPriceCurve: string, data: any) {
     const { transaction: dataTx } = data.transaction;
     const signature = decodeTransact(dataTx.signature);
     const { message } = dataTx.transaction;
@@ -80,56 +98,31 @@ export function parsePumpFunSwaps(tokenPriceCurve: string, data: any) {
         dataTx.meta.preBalances[curveIndex],
         dataTx.meta.postBalances[curveIndex]
     ];
-
-    // console.log( 'dataTx?.meta?.preTokenBalances:: ',dataTx?.meta?.preTokenBalances)
     const curvePreBalanceRecord = dataTx?.meta?.preTokenBalances.find(t => t.owner === tokenPriceCurve);
     const curveTokenPreBalance = curvePreBalanceRecord?.uiTokenAmount?.amount;
-
-
-    // console.log( 'dataTx?.meta?.postTokenBalances:: ',dataTx?.meta?.postTokenBalances)
-
     const curvePostBalanceRecord = dataTx?.meta?.postTokenBalances.find(t => t.owner === tokenPriceCurve);
     const curveTokenPostBalance = curvePostBalanceRecord?.uiTokenAmount?.amount;
-
-
-    /**
-     * BUY = PRE_BALANCE < POST_BALANCE SOL GOES IN POOL
-     * SELL = PRE_BALANCE > POST_BALANCE SOL GOES OUT OF POOL
-     * 
-     * BUY = PRE_BALANCE > POST_BALANCE TOKEN GOES OUT POOL
-     * SELL = PRE_BALANCE < POST_BALANCE TOKEN GOES IN OF POOL
-     * 
-     * 
-     *  dif sol / dif token
-     */
-   
-    if(curveTokenPostBalance === curveTokenPreBalance) return;
+    if (curveTokenPostBalance === curveTokenPreBalance) return;
 
     let price = ((new BigNumber(Math.max(curveAddressSolPostBalance, curveAddressSolPreBalance))
-            .minus(new BigNumber(Math.min(curveAddressSolPostBalance, curveAddressSolPreBalance)))).div(1e9))
-            .div((new BigNumber(Math.max(curveTokenPostBalance, curveTokenPreBalance))
+        .minus(new BigNumber(Math.min(curveAddressSolPostBalance, curveAddressSolPreBalance)))).div(1e9))
+        .div((new BigNumber(Math.max(curveTokenPostBalance, curveTokenPreBalance))
             .minus(new BigNumber(Math.min(curveTokenPostBalance, curveTokenPreBalance)))).dividedBy(1e6))
 
-    return { 
+    return {
+        token,
         signature,
         price: Number(price)
     };
 }
 
-export async function pumpFunPriceWs(token: string) {
+export async function pumpFunPriceWs(token: string, solIn: number, tokenOut: number) {
     const client = new Client(process.env.TRITON_NODE_URL, process.env.TRITON_NODE_KEY, { "grpc.max_receive_message_length": 64 * 1024 * 1024 }); // 64MiB
     const [tokenPriceCurve, _b0] = await PublicKey.findProgramAddressSync(
         [Buffer.from("bonding-curve"), bs58.decode(token)], new PublicKey(PUMP_FUN_PROGRAM_ID)
     );
-    console.log( 'tokenPriceCurve:: ',tokenPriceCurve)
-    reservesStream(client, tokenPriceCurve);
-
+    reservesStream(client, token, tokenPriceCurve, solIn, tokenOut);
 }
-
-pumpFunPriceWs('B7sLfUFeoFxpCzhjtrnnqtshoGMxRW1zbAenAk3Ypump');
-// BONDING_CURVE_ADDRESS kBbXJwUyqqzL8SFD43jXmvkFcjV22JXPiQExieCFg91
-// BONDING_CURVE_ATA 9xG96zLhQcDXRAtq53zom4MLps3kbxBnkv3t4xkKJLva
-// BONDING_CURVE_ATA_SOL 3hobuXvisZEGbTJKtQ9jgGvULNkZdJuTo2yd8M9VtyNm
 
 
 
